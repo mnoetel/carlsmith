@@ -7,14 +7,14 @@ impact <- .4
 
 # Load package
 library(networkD3)
- 
+
 carlsmith <- list(nodes = as.character(NA),
                 links = as.matrix(NA, ncol = 3))
 carlsmith$nodes <- as.data.frame(c("Will APS be feasible?",
                      "Will we want to make them?",
                      "Will it be harder to keep them aligned?",
-                     "Will they seek power?",
-                     "Will they scale to have a big impact?",
+                     "Will they do a lot of damage?",
+                     "Would they disempower us?",
                      "No existential catastrophe",
                      "Existential catastrophe"))
 names(carlsmith$nodes) <- "name"
@@ -31,17 +31,17 @@ carlsmith$links <- matrix(c(0, 1, feasible,
                             4, 5, feasible * incentives * misalined * powerseeking - feasible * incentives * misalined * powerseeking * impact),
                     ncol = 3,
                     byrow = TRUE)
-carlsmith$links = as.data.frame(carlsmith$links) 
+carlsmith$links = as.data.frame(carlsmith$links)
 names(carlsmith$links) <- c("source", "target", "value")
 
 # Add a 'group' column to each connection:
 carlsmith$links$group <- as.factor(c("doom", "fine","doom", "fine","doom", "fine","doom", "fine","doom", "fine"))
- 
+
 # Add a 'group' column to each node. Here I decide to put all of them in the same group to make them grey
 carlsmith$nodes$group <- as.factor(c(rep("grey_nodes",5),
                                     "fine",
                                     "doom"))
- 
+
 # Give a color for each group:
 my_color <- 'd3.scaleOrdinal() .domain(["doom", "fine", "grey_nodes"]) .range(["red", "green", "grey"])'
 
@@ -55,3 +55,14 @@ p <- sankeyNetwork(Links = carlsmith$links,
 p
 
 # save the widget
+p <- sankeyNetwork(Links = links,
+                   Nodes = nodes, Source = "source",
+                   Target = "target", Value = "value", NodeID = "name",
+                   units = "p", fontSize = 12, nodeWidth = 15,
+                   colourScale=my_color, LinkGroup="group", NodeGroup="group",
+                   nodePadding = 20, sinksRight = FALSE)
+p
+carlsmith$nodes == nodes
+carlsmith$links == links
+str(carlsmith$links)
+str(links)

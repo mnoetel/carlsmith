@@ -1,82 +1,116 @@
+# Load packages
 library(shiny)
 library(shinydashboard)
 library(networkD3)
 
-ui <- dashboardPage(
-    dashboardHeader(title = "What's your probability of an existential catastrophe?"),
-    dashboardSidebar(sliderInput("feasible", "Will APS systems be feasible? 1 = certain, 0 = impossible",
-                    0.65, min = 0.01, max = 1, step = .01)),
-    dashboardSidebar(sliderInput("incentives", "Will we want to make them?",
-                    0.8, min = 0.01, max = 1, step = .01)),
-    dashboardSidebar(sliderInput("misalined", "If we make them, would they be hard to align?",
-                    0.4, min = 0.01, max = 1, step = .01)),
-    dashboardSidebar(sliderInput("powerseeking", "If misaligned, would they seek power to do a lot of damage?",
-                    0.65, min = 0.01, max = 1, step = .01)),
-    dashboardSidebar(sliderInput("impact", "If they do a lot of damage, could they disempower us?",
-                    0.4, min = 0.01, max = 1, step = .01))
-    dashboardBody(
-    # Boxes need to be put in a row (or column)
-        fluidRow(
-            sankeyNetworkOutput("plot")
-         )
+ui <- shinyUI(fluidPage(
+
+  titlePanel("What do you think will happen with AI?"),
+
+  sidebarLayout(
+    sidebarPanel(
+      h5("For each question, answer on a scale from 0 = impossible to 1 = certain."),
+      sliderInput("feasible", "Will Advanced, Planning, and Strategically-aware systems be feasible?",
+                  value = 0.65, min = 0.01, max = 1, step = .01),
+      sliderInput("incentives", "Will we want to make them?",
+                  value = 0.8, min = 0.01, max = 1, step = .01),
+      sliderInput("misaligned", "If we make them, would they be hard to align?",
+                  value = 0.4, min = 0.01, max = 1, step = .01),
+      sliderInput("powerseeking", "If misaligned, would they seek power to do a lot of damage?",
+                  value = 0.65, min = 0.01, max = 1, step = .01),
+      sliderInput("impact", "If they do a lot of damage, could they disempower us?",
+                  value = 0.4, min = 0.01, max = 1, step = .01),
+      width = 3),
+    mainPanel(
+      uiOutput('preamble'),
+      tags$head(tags$style("#preamble{font-size: 16px;
+                                 font-style: italic;
+                                 }"
+      )),
+      sankeyNetworkOutput('plot', width = "1400px", height = "600px"),
+      textOutput('result_as_text'),
+      tags$head(tags$style("#result_as_text{font-size: 16px;
+                                 font-style: italic;
+                                 }"
+      )
+      )
     )
-)
+    #tableOutput('table')
+  )
+))
 
 server <- function(input, output) {
-feasible <- input$feasible
-incentives <- input$incentives
-misalined <- input$misalined
-powerseeking <- input$powerseeking
-impact <- input$impact
-# Load package
-library(networkD3)
- 
-carlsmith <- list(nodes = as.character(NA),
-                links = as.matrix(NA, ncol = 3))
-carlsmith$nodes <- as.data.frame(c("Will APS be feasible?",
-                     "Will we want to make them?",
-                     "Will it be harder to keep them aligned?",
-                     "Will they do a lot of damage?",
-                     "Would they disempower us?",
-                     "No existential catastrophe",
-                     "Existential catastrophe"))
-names(carlsmith$nodes) <- "name"
+  nodes <- as.data.frame(c("Will APS be feasible?",
+                                     "Will we want to make them?",
+                                     "Will it be harder to keep them aligned?",
+                                     "Could they do a lot of damage?",
+                                     "Would they disempower us?",
+                                     "No catastrophic outcome",
+                                     "Existential catastrophe"))
+  names(nodes) <- "name"
 
-carlsmith$links <- matrix(c(0, 1, feasible,
-                            0, 5, 1 - feasible,
-                            1, 2, feasible * incentives,
-                            1, 5, feasible - feasible * incentives,
-                            2, 3, feasible * incentives * misalined,
-                            2, 5, feasible * incentives - feasible * incentives * misalined,
-                            3, 4, feasible * incentives * misalined * powerseeking,
-                            3, 5, feasible * incentives * misalined - feasible * incentives * misalined * powerseeking,
-                            4, 6, feasible * incentives * misalined * powerseeking * impact,
-                            4, 5, feasible * incentives * misalined * powerseeking - feasible * incentives * misalined * powerseeking * impact),
-                    ncol = 3,
-                    byrow = TRUE)
-carlsmith$links = as.data.frame(carlsmith$links) 
-names(carlsmith$links) <- c("source", "target", "value")
+  links <- reactive({
+    x <- as.data.frame(matrix(c(0, 1, input$feasible, "doom",
+                           0, 5, 1 - input$feasible, "fine",
+                           1, 2, input$feasible * input$incentives, "doom",
+                           1, 5, input$feasible - input$feasible * input$incentives, "fine",
+                           2, 3, input$feasible * input$incentives * input$misaligned, "doom",
+                           2, 5, input$feasible * input$incentives - input$feasible * input$incentives * input$misaligned, "fine",
+                           3, 4, input$feasible * input$incentives * input$misaligned * input$powerseeking, "doom",
+                           3, 5, input$feasible * input$incentives * input$misaligned - input$feasible * input$incentives * input$misaligned * input$powerseeking, "fine",
+                           4, 6, input$feasible * input$incentives * input$misaligned * input$powerseeking * input$impact, "doom",
+                           4, 5, input$feasible * input$incentives * input$misaligned * input$powerseeking - input$feasible * input$incentives * input$misaligned * input$powerseeking * input$impact, "fine"),
+                         ncol = 4,
+                         byrow = TRUE))
+    names(x) <- c("source", "target", "value", "group")
+    x[,1:3] <- lapply(x[ ,1:3], as.numeric)
+    x[, 4] <- as.factor(x[, 4])
+    return(x)
+  })
+  p_as_table <- data.frame(prob = as.numeric(c(1/7, 1/11, 1/31, 1/51, 1/101, 1/1001, 1/10001, 1/1000001, 1/1000000001)),
+                           what = as.character(c("chance of death for a pedestrian hit by a car traveling at 45 kph",
+                                                 "chance that a smoker’s habit will kill them before age 60",
+                                                 "chance that having unprotected sex once will lead to pregnancy",
+                                                 "chance of death for a US solider serving in the Vietnam War for one year",
+                                                 "chance that your spouse cheated on you last month",
+                                                 "chance of death for a US soldier deployed to the Iraq War for 4 years",
+                                                 "chance of death from riding a motorbike 1100 kilometres",
+                                                 "chance that you will die a violent or accidental death today",
+                                                 "chance of being struck by lightning this week"
+                                                 )))
+  url <- a("Click this heading for the full report, or change the numbers here to match your views.",
+           href = "https://arxiv.org/pdf/2206.13353.pdf")
 
-# Add a 'group' column to each connection:
-carlsmith$links$group <- as.factor(c("doom", "fine","doom", "fine","doom", "fine","doom", "fine","doom", "fine"))
- 
-# Add a 'group' column to each node. Here I decide to put all of them in the same group to make them grey
-carlsmith$nodes$group <- as.factor(c(rep("grey_nodes",5),
-                                    "fine",
-                                    "doom"))
- 
-# Give a color for each group:
-my_color <- 'd3.scaleOrdinal() .domain(["doom", "fine", "grey_nodes"]) .range(["red", "green", "grey"])'
+  output$preamble <- renderUI({
+     tagList("This visualisation represents our probability of surviving the transiton to a world with advanced artificial intelligence. Hopefully we're fine, but default numbers below come from Carlsmith's (2021) report for Open Philanthropy. ", url)
+  })
 
-# Thus we can plot it
-output$plot <- renderSankeyNetwork({
-    sankeyNetwork(Links = carlsmith$links,
-            Nodes = carlsmith$nodes, Source = "source",
-            Target = "target", Value = "value", NodeID = "name",
-            units = "p", fontSize = 12, nodeWidth = 15,
-            colourScale=my_color, LinkGroup="group", NodeGroup="group",
-            nodePadding = 20, sinksRight = FALSE)
-})
+  output$result_as_text <- renderText({
+    paste("You think there's a ",
+          round(links()$value[9]*100,2),
+          "% chance of an existential catastrophe from AI, roughly the ",
+          p_as_table$what[which.min(abs(p_as_table$prob - links()$value[9]))],
+          sep = "")
+  })
+
+
+  # Add a 'group' column to each node. Here I decide to put all of them in the same group to make them grey
+  nodes$group <- as.factor(c(rep("grey_nodes",5),
+                                       "fine",
+                                       "doom"))
+
+  # Give a color for each group:
+  my_color <- 'd3.scaleOrdinal() .domain(["doom", "fine", "grey_nodes"]) .range(["red", "green", "grey"])'
+
+  output$table <- renderTable(links())
+  output$plot <- renderSankeyNetwork({
+    sankeyNetwork(Links = links(),
+                  Nodes = nodes, Source = "source",
+                  Target = "target", Value = "value", NodeID = "name",
+                  units = "p", fontSize = 14, nodeWidth = 15,
+                  colourScale = my_color, LinkGroup="group", NodeGroup="group",
+                  nodePadding = 20, sinksRight = FALSE)
+  })
 
 }
 

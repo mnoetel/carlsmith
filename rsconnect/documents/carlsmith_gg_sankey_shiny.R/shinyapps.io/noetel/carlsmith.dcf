@@ -1,0 +1,14 @@
+name: carlsmith
+title: carlsmith
+username:
+account: noetel
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 7572032
+bundleId: 6493280
+url: https://noetel.shinyapps.io/carlsmith/
+when: 1667993881.82258
+lastSyncTime: 1667993881.82258
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: carlsmith_gg_sankey.R|carlsmith_sankey.R|LICENSE|README.md|sankey_carlsmith.html|test_sankey_shiny.R
